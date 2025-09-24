@@ -1,0 +1,150 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Dashboard</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Balsamiq+Sans:wght@400;700&display=swap" rel="stylesheet">
+    <style>
+        body {
+            font-family: 'Balsamiq Sans', sans-serif;
+            margin: 0;
+            padding: 0;
+            background-color: #182030;
+            color: #FFFFFF;
+            background-image: url('https://images.unsplash.com/photo-1534796636912-3b95b3ab5986?q=80&w=2071&auto=format&fit=crop&ixlib=rb-4.0.3&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D');
+            background-size: cover;
+            background-attachment: fixed;
+        }
+        .header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 1rem;
+            background-color: rgba(0,0,0,0.5);
+            backdrop-filter: blur(10px);
+            border-bottom: 1px solid #FC3D21;
+        }
+        .header h1 {
+            margin: 0;
+            font-size: 1.5rem;
+        }
+        .logout-btn {
+            text-decoration: none;
+            color: #fff;
+            background-color: #FC3D21;
+            padding: 0.5rem 1rem;
+            border-radius: 20px;
+            font-weight: bold;
+            transition: all 0.2s ease-in-out;
+        }
+        .logout-btn:hover {
+            background-color: #0B3D91;
+            transform: scale(1.1);
+        }
+        .container {
+            padding: 1rem;
+        }
+        .card {
+            background-color: rgba(42, 52, 75, 0.8);
+            backdrop-filter: blur(10px);
+            padding: 1.5rem;
+            border-radius: 15px;
+            margin-bottom: 1.5rem;
+            border: 1px solid #0B3D91;
+        }
+        .current-auction img {
+            max-width: 100%;
+            height: auto;
+            border-radius: 10px;
+            margin-bottom: 1rem;
+        }
+        .owned-planets h2 {
+            margin-top: 0;
+            color: #FC3D21;
+        }
+        .planet-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(250px, 1fr));
+            gap: 1rem;
+        }
+        .planet-card {
+            background-color: rgba(42, 52, 75, 0.8);
+            backdrop-filter: blur(10px);
+            border-radius: 15px;
+            border: 1px solid #0B3D91;
+            overflow: hidden;
+            transition: all 0.2s ease-in-out;
+        }
+        .planet-card:hover {
+            transform: translateY(-5px);
+            box-shadow: 0 0 15px #FC3D21;
+        }
+        .planet-card img {
+            width: 100%;
+            height: 150px;
+            object-fit: cover;
+        }
+        .planet-card-content {
+            padding: 1rem;
+        }
+        .planet-card-content h3 {
+            margin-top: 0;
+        }
+    </style>
+</head>
+<body>
+    <div class="header">
+            <h1>{{ session.username }} <br> Credits: {{ credits }}</h1>
+        <a href="{{ url_for('logout') }}" class="logout-btn">Logout</a>
+    </div>
+
+    <div class="container">
+        <div class="card current-auction">
+            <h2>Current Auction</h2>
+            {% if current_planet %}
+                <h3>{{ current_planet.name }}</h3>
+                <img src="{{ url_for('static', filename='uploads/' + current_planet.image) }}">
+                <p>{{ current_planet.description }}</p>
+                <p>Current Highest Bid: {{ highest_bid.amount }} by team {{ highest_bid.team }}</p>
+            {% else %}
+                <p>No planet is currently being auctioned.</p>
+            {% endif %}
+        </div>
+
+        <div class="owned-planets">
+            <h2>Your Planets</h2>
+            {% if owned_planets %}
+                <div class="planet-grid">
+                    {% for planet in owned_planets %}
+                        <div class="planet-card">
+                            <img src="{{ url_for('static', filename='uploads/' + planet.image) }}">
+                            <div class="planet-card-content">
+                                <h3>{{ planet.name }}</h3>
+                                <p>{{ planet.description }}</p>
+                            </div>
+                        </div>
+                    {% endfor %}
+                </div>
+            {% else %}
+                <p>You do not own any planets yet.</p>
+            {% endif %}
+        </div>
+    </div>
+
+    <script>
+        let lastUpdate = 0;
+        async function checkForUpdates() {
+            const response = await fetch('/last_update');
+            const latestUpdate = await response.text();
+            if (lastUpdate === 0) {
+                lastUpdate = latestUpdate;
+            } else if (latestUpdate > lastUpdate) {
+                window.location.reload();
+            }
+        }
+        setInterval(checkForUpdates, 1000);
+    </script>
+</body>
+</html>
