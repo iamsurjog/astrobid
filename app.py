@@ -7,10 +7,11 @@ import time
 app = Flask(__name__)
 app.secret_key = 'super secret key'
 app.config['UPLOAD_FOLDER'] = 'static/uploads'
+app.config['DATA_FOLDER'] = 'data'
 
 def get_users():
     users = {}
-    with open('users.csv', 'r') as f:
+    with open(os.path.join(app.config['DATA_FOLDER'], 'users.csv'), 'r') as f:
         reader = csv.reader(f)
         next(reader)  # Skip header
         for row in reader:
@@ -19,7 +20,7 @@ def get_users():
 
 def get_planets():
     planets = []
-    with open('planets.csv', 'r') as f:
+    with open(os.path.join(app.config['DATA_FOLDER'], 'planets.csv'), 'r') as f:
         reader = csv.DictReader(f)
         for row in reader:
             planets.append(row)
@@ -27,7 +28,7 @@ def get_planets():
 
 def get_ownership():
     ownership = {}
-    with open('ownership.csv', 'r') as f:
+    with open(os.path.join(app.config['DATA_FOLDER'], 'ownership.csv'), 'r') as f:
         reader = csv.DictReader(f)
         for row in reader:
             ownership[row['planet']] = row['team']
@@ -35,7 +36,7 @@ def get_ownership():
 
 def get_teams():
     teams = {}
-    with open('teams.csv', 'r') as f:
+    with open(os.path.join(app.config['DATA_FOLDER'], 'teams.csv'), 'r') as f:
         reader = csv.DictReader(f)
         for row in reader:
             teams[row['team_name']] = int(row['credits'])
@@ -74,7 +75,7 @@ def dashboard():
     teams = get_teams()
     session['credits'] = teams.get(session['username'], 0)
 
-    with open('current_auction.txt', 'r') as f:
+    with open(os.path.join(app.config['DATA_FOLDER'], 'current_auction.txt'), 'r') as f:
         current_auction_planet_name = f.read().strip()
 
     current_planet = None
@@ -87,7 +88,7 @@ def dashboard():
 
     highest_bid = {'team': 'N/A', 'amount': 0}
     if current_planet:
-        with open('bids.csv', 'r') as f:
+        with open(os.path.join(app.config['DATA_FOLDER'], 'bids.csv'), 'r') as f:
             reader = csv.DictReader(f)
             for row in reader:
                 if row['planet'] == current_planet['name'] and int(row['amount']) > int(highest_bid['amount']):
@@ -95,7 +96,7 @@ def dashboard():
     
     team_name = session['username']
     owned_planets_names = []
-    with open('ownership.csv', 'r') as f:
+    with open(os.path.join(app.config['DATA_FOLDER'], 'ownership.csv'), 'r') as f:
         reader = csv.DictReader(f)
         for row in reader:
             if row['team'] == team_name:
@@ -134,7 +135,7 @@ def admin():
     if 'username' not in session or session['username'] != 'root':
         return redirect(url_for('login'))
     
-    with open('current_auction.txt', 'r') as f:
+    with open(os.path.join(app.config['DATA_FOLDER'], 'current_auction.txt'), 'r') as f:
         current_auction_planet_name = f.read().strip()
 
     current_planet = None
@@ -147,7 +148,7 @@ def admin():
 
     highest_bid = {'team': 'N/A', 'amount': 0}
     if current_planet:
-        with open('bids.csv', 'r') as f:
+        with open(os.path.join(app.config['DATA_FOLDER'], 'bids.csv'), 'r') as f:
             reader = csv.DictReader(f)
             for row in reader:
                 if row['planet'] == current_planet['name'] and int(row['amount']) > int(highest_bid['amount']):
@@ -174,14 +175,14 @@ def planet_management():
         if image:
             filename = secure_filename(image.filename)
             image.save(os.path.join(app.config['UPLOAD_FOLDER'], filename))
-            with open('planets.csv', 'a', newline='') as f:
+            with open(os.path.join(app.config['DATA_FOLDER'], 'planets.csv'), 'a', newline='') as f:
                 writer = csv.writer(f)
                 writer.writerow([name, description, filename, value])
             return redirect(url_for('planet_management'))
 
     planets = get_planets()
     ownership = get_ownership()
-    with open('last_update.txt', 'w') as f:
+    with open(os.path.join(app.config['DATA_FOLDER'], 'last_update.txt'), 'w') as f:
         f.write(str(time.time()))
     return render_template('planet_management.html', planets=planets, ownership=ownership)
 
@@ -192,13 +193,13 @@ def set_auction():
         return redirect(url_for('login'))
 
     planet_name = request.form['planet_name']
-    with open('current_auction.txt', 'w') as f:
+    with open(os.path.join(app.config['DATA_FOLDER'], 'current_auction.txt'), 'w') as f:
         f.write(planet_name)
     return redirect(url_for('planet_management'))
 
 @app.route('/last_update')
 def last_update():
-    with open('last_update.txt', 'r') as f:
+    with open(os.path.join(app.config['DATA_FOLDER'], 'last_update.txt'), 'r') as f:
         return f.read().strip()
 
 @app.route('/sell_planet', methods=['POST'])
@@ -206,7 +207,7 @@ def sell_planet():
     if 'username' not in session or session['username'] != 'root':
         return redirect(url_for('login'))
 
-    with open('current_auction.txt', 'r') as f:
+    with open(os.path.join(app.config['DATA_FOLDER'], 'current_auction.txt'), 'r') as f:
         planet_name = f.read().strip()
 
     if not planet_name:
@@ -216,37 +217,37 @@ def sell_planet():
     amount = int(request.form['amount'])
 
     # Update ownership
-    with open('ownership.csv', 'a', newline='') as f:
+    with open(os.path.join(app.config['DATA_FOLDER'], 'ownership.csv'), 'a', newline='') as f:
         writer = csv.writer(f)
         writer.writerow([planet_name, team_name])
 
     # Update credits
     teams = get_teams()
     teams[team_name] -= amount
-    with open('teams.csv', 'w', newline='') as f:
+    with open(os.path.join(app.config['DATA_FOLDER'], 'teams.csv'), 'w', newline='') as f:
         writer = csv.writer(f)
         writer.writerow(['team_name', 'credits'])
         for team, credits in teams.items():
             writer.writerow([team, credits])
 
     # Clear current auction
-    with open('current_auction.txt', 'w') as f:
+    with open(os.path.join(app.config['DATA_FOLDER'], 'current_auction.txt'), 'w') as f:
         f.write('')
 
     # Clear bids for the sold planet
     rows = []
-    with open('bids.csv', 'r', newline='') as f:
+    with open(os.path.join(app.config['DATA_FOLDER'], 'bids.csv'), 'r', newline='') as f:
         reader = csv.reader(f)
         header = next(reader)
         rows.append(header)
         for row in reader:
             if row[0] != planet_name:
                 rows.append(row)
-    with open('bids.csv', 'w', newline='') as f:
+    with open(os.path.join(app.config['DATA_FOLDER'], 'bids.csv'), 'w', newline='') as f:
         writer = csv.writer(f)
         writer.writerows(rows)
 
-    with open('last_update.txt', 'w') as f:
+    with open(os.path.join(app.config['DATA_FOLDER'], 'last_update.txt'), 'w') as f:
         f.write(str(time.time()))
 
     return redirect(url_for('admin'))
