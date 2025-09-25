@@ -238,5 +238,35 @@ def sell_planet():
 
     return redirect(url_for('admin'))
 
+@app.route('/settings', methods=['GET', 'POST'])
+def settings():
+    if 'username' not in session:
+        return redirect(url_for('login'))
+
+    if request.method == 'POST':
+        cursor = db.cursor()
+        if 'new_username' in request.form:
+            new_username = request.form['new_username']
+            old_username = session['username']
+            
+            # Update username in users table
+            cursor.execute("UPDATE users SET username = %s WHERE username = %s", (new_username, old_username))
+            db.commit()
+            
+            # Update username in teams table
+            cursor.execute("UPDATE teams SET team_name = %s WHERE team_name = %s", (new_username, old_username))
+            db.commit()
+            
+            session['username'] = new_username
+        elif 'new_password' in request.form:
+            new_password = request.form['new_password']
+            username = session['username']
+            cursor.execute("UPDATE users SET password = %s WHERE username = %s", (new_password, username))
+            db.commit()
+        
+        return redirect(url_for('settings'))
+
+    return render_template('settings.html')
+
 if __name__ == '__main__':
     app.run(debug=True)

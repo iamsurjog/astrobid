@@ -96,8 +96,11 @@
 </head>
 <body>
     <div class="header">
-            <h1>{{ session.username }} <br> Credits: {{ credits }}</h1>
-        <a href="{{ url_for('logout') }}" class="logout-btn">Logout</a>
+        <h1>{{ session.username }} <br> Credits: {{ credits }}</h1>
+        <div>
+            <a href="{{ url_for('settings') }}" class="logout-btn">Settings</a>
+            <a href="{{ url_for('logout') }}" class="logout-btn">Logout</a>
+        </div>
     </div>
 
     <div class="container">
