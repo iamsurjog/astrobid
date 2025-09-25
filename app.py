@@ -268,5 +268,34 @@ def settings():
 
     return render_template('settings.html')
 
+@app.route('/leaderboard')
+def leaderboard():
+    if 'username' not in session or session['username'] != 'root':
+        return redirect(url_for('login'))
+
+    teams = get_teams()
+    planets = get_planets()
+    ownership = get_ownership()
+
+    planet_values = {planet['name']: planet['value'] for planet in planets}
+
+    leaderboard_data = []
+    for team_name, credits in teams.items():
+        planet_value = 0
+        for planet, owner in ownership.items():
+            if owner == team_name:
+                planet_value += planet_values.get(planet, 0)
+        
+        leaderboard_data.append({
+            'team_name': team_name,
+            'credits': credits,
+            'planet_value': planet_value,
+            'total_score': credits + planet_value
+        })
+
+    leaderboard_data.sort(key=lambda x: x['total_score'], reverse=True)
+
+    return render_template('leaderboard.html', leaderboard_data=leaderboard_data)
+
 if __name__ == '__main__':
     app.run(debug=True)
