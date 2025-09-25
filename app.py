@@ -1,46 +1,54 @@
 import os
 from flask import Flask, render_template, request, redirect, url_for, session, make_response
 from werkzeug.utils import secure_filename
-import csv
+import mysql.connector
+from dotenv import dotenv_values
 import time
+
+config = dotenv_values(".env")
+db = mysql.connector.connect(
+  host=config["host"],
+  user=config["user"],
+  password=config["password"],
+  database="sujatro$astrobid"
+)
 
 app = Flask(__name__)
 app.secret_key = 'super secret key'
 app.config['UPLOAD_FOLDER'] = 'static/uploads'
-app.config['DATA_FOLDER'] = 'data'
 
 def get_users():
     users = {}
-    with open(os.path.join(app.config['DATA_FOLDER'], 'users.csv'), 'r') as f:
-        reader = csv.reader(f)
-        next(reader)  # Skip header
-        for row in reader:
-            users[row[0]] = row[1]
+    cursor = db.cursor(dictionary=True)
+    cursor.execute("SELECT * FROM users")
+    for row in cursor.fetchall():
+        users[row['username']] = row['password']
     return users
 
 def get_planets():
-    planets = []
-    with open(os.path.join(app.config['DATA_FOLDER'], 'planets.csv'), 'r') as f:
-        reader = csv.DictReader(f)
-        for row in reader:
-            planets.append(row)
-    return planets
+    cursor = db.cursor(dictionary=True)
+    cursor.execute("SELECT * FROM planets")
+    return cursor.fetchall()
 
 def get_ownership():
     ownership = {}
-    with open(os.path.join(app.config['DATA_FOLDER'], 'ownership.csv'), 'r') as f:
-        reader = csv.DictReader(f)
-        for row in reader:
-            ownership[row['planet']] = row['team']
+    cursor = db.cursor(dictionary=True)
+    cursor.execute("SELECT * FROM ownership")
+    for row in cursor.fetchall():
+        ownership[row['planet']] = row['team']
     return ownership
 
 def get_teams():
     teams = {}
-    with open(os.path.join(app.config['DATA_FOLDER'], 'teams.csv'), 'r') as f:
-        reader = csv.DictReader(f)
-        for row in reader:
-            teams[row['team_name']] = int(row['credits'])
+    cursor = db.cursor(dictionary=True)
+    cursor.execute("SELECT * FROM teams")
+    for row in cursor.fetchall():
+        teams[row['team_name']] = int(row['credits'])
     return teams
+
+@app.route('/')
+def index():
+    return render_template('index.html')
 
 @app.route('/login', methods=['GET', 'POST'])
 def login():
@@ -75,8 +83,9 @@ def dashboard():
     teams = get_teams()
     session['credits'] = teams.get(session['username'], 0)
 
-    with open(os.path.join(app.config['DATA_FOLDER'], 'current_auction.txt'), 'r') as f:
-        current_auction_planet_name = f.read().strip()
+    cursor = db.cursor()
+    cursor.execute("SELECT planet_name FROM current_auction LIMIT 1")
+    current_auction_planet_name = cursor.fetchone()[0]
 
     current_planet = None
     if current_auction_planet_name:
@@ -88,19 +97,16 @@ def dashboard():
 
     highest_bid = {'team': 'N/A', 'amount': 0}
     if current_planet:
-        with open(os.path.join(app.config['DATA_FOLDER'], 'bids.csv'), 'r') as f:
-            reader = csv.DictReader(f)
-            for row in reader:
-                if row['planet'] == current_planet['name'] and int(row['amount']) > int(highest_bid['amount']):
-                    highest_bid = row
+        cursor = db.cursor(dictionary=True)
+        cursor.execute("SELECT * FROM bids WHERE planet = %s ORDER BY amount DESC LIMIT 1", (current_planet['name'],))
+        highest_bid = cursor.fetchone() or highest_bid
     
     team_name = session['username']
     owned_planets_names = []
-    with open(os.path.join(app.config['DATA_FOLDER'], 'ownership.csv'), 'r') as f:
-        reader = csv.DictReader(f)
-        for row in reader:
-            if row['team'] == team_name:
-                owned_planets_names.append(row['planet'])
+    cursor = db.cursor(dictionary=True)
+    cursor.execute("SELECT planet FROM ownership WHERE team = %s", (team_name,))
+    for row in cursor.fetchall():
+        owned_planets_names.append(row['planet'])
 
     owned_planets = []
     if owned_planets_names:
@@ -115,28 +121,20 @@ def dashboard():
     resp.headers['Expires'] = '0'
     return resp
 
-
-
-
-
-
 @app.route('/logout')
 def logout():
     session.pop('username', None)
     session.pop('credits', None)
     return redirect(url_for('login'))
 
-
-
-
-
 @app.route('/admin')
 def admin():
     if 'username' not in session or session['username'] != 'root':
         return redirect(url_for('login'))
     
-    with open(os.path.join(app.config['DATA_FOLDER'], 'current_auction.txt'), 'r') as f:
-        current_auction_planet_name = f.read().strip()
+    cursor = db.cursor()
+    cursor.execute("SELECT planet_name FROM current_auction LIMIT 1")
+    current_auction_planet_name = cursor.fetchone()[0]
 
     current_planet = None
     if current_auction_planet_name:
@@ -148,19 +146,14 @@ def admin():
 
     highest_bid = {'team': 'N/A', 'amount': 0}
     if current_planet:
-        with open(os.path.join(app.config['DATA_FOLDER'], 'bids.csv'), 'r') as f:
-            reader = csv.DictReader(f)
-            for row in reader:
-                if row['planet'] == current_planet['name'] and int(row['amount']) > int(highest_bid['amount']):
-                    highest_bid = row
+        cursor = db.cursor(dictionary=True)
+        cursor.execute("SELECT * FROM bids WHERE planet = %s ORDER BY amount DESC LIMIT 1", (current_planet['name'],))
+        highest_bid = cursor.fetchone() or highest_bid
     
     users = get_users()
     teams = [user for user in users if user != 'root']
 
     return render_template('admin.html', current_planet=current_planet, highest_bid=highest_bid, teams=teams)
-
-
-
 
 @app.route('/admin/planets', methods=['GET', 'POST'])
 def planet_management():
@@ -175,17 +168,17 @@ def planet_management():
         if image:
             filename = secure_filename(image.filename)
             image.save(os.path.join(app.config['UPLOAD_FOLDER'], filename))
-            with open(os.path.join(app.config['DATA_FOLDER'], 'planets.csv'), 'a', newline='') as f:
-                writer = csv.writer(f)
-                writer.writerow([name, description, filename, value])
+            cursor = db.cursor()
+            cursor.execute("INSERT INTO planets (name, description, image, value) VALUES (%s, %s, %s, %s)", (name, description, filename, value))
+            db.commit()
             return redirect(url_for('planet_management'))
 
     planets = get_planets()
     ownership = get_ownership()
-    with open(os.path.join(app.config['DATA_FOLDER'], 'last_update.txt'), 'w') as f:
-        f.write(str(time.time()))
+    cursor = db.cursor()
+    cursor.execute("UPDATE last_update SET time = %s", (time.time(),))
+    db.commit()
     return render_template('planet_management.html', planets=planets, ownership=ownership)
-
 
 @app.route('/set_auction', methods=['POST'])
 def set_auction():
@@ -193,22 +186,25 @@ def set_auction():
         return redirect(url_for('login'))
 
     planet_name = request.form['planet_name']
-    with open(os.path.join(app.config['DATA_FOLDER'], 'current_auction.txt'), 'w') as f:
-        f.write(planet_name)
+    cursor = db.cursor()
+    cursor.execute("UPDATE current_auction SET planet_name = %s", (planet_name,))
+    db.commit()
     return redirect(url_for('planet_management'))
 
 @app.route('/last_update')
 def last_update():
-    with open(os.path.join(app.config['DATA_FOLDER'], 'last_update.txt'), 'r') as f:
-        return f.read().strip()
+    cursor = db.cursor()
+    cursor.execute("SELECT time FROM last_update")
+    return str(cursor.fetchone()[0])
 
 @app.route('/sell_planet', methods=['POST'])
 def sell_planet():
     if 'username' not in session or session['username'] != 'root':
         return redirect(url_for('login'))
 
-    with open(os.path.join(app.config['DATA_FOLDER'], 'current_auction.txt'), 'r') as f:
-        planet_name = f.read().strip()
+    cursor = db.cursor()
+    cursor.execute("SELECT planet_name FROM current_auction LIMIT 1")
+    planet_name = cursor.fetchone()[0]
 
     if not planet_name:
         return "No planet is currently being auctioned.", 400
@@ -217,41 +213,30 @@ def sell_planet():
     amount = int(request.form['amount'])
 
     # Update ownership
-    with open(os.path.join(app.config['DATA_FOLDER'], 'ownership.csv'), 'a', newline='') as f:
-        writer = csv.writer(f)
-        writer.writerow([planet_name, team_name])
+    cursor = db.cursor()
+    cursor.execute("INSERT INTO ownership (planet, team) VALUES (%s, %s)", (planet_name, team_name))
+    db.commit()
 
     # Update credits
-    teams = get_teams()
-    teams[team_name] -= amount
-    with open(os.path.join(app.config['DATA_FOLDER'], 'teams.csv'), 'w', newline='') as f:
-        writer = csv.writer(f)
-        writer.writerow(['team_name', 'credits'])
-        for team, credits in teams.items():
-            writer.writerow([team, credits])
+    cursor = db.cursor()
+    cursor.execute("UPDATE teams SET credits = credits - %s WHERE team_name = %s", (amount, team_name))
+    db.commit()
 
     # Clear current auction
-    with open(os.path.join(app.config['DATA_FOLDER'], 'current_auction.txt'), 'w') as f:
-        f.write('')
+    cursor = db.cursor()
+    cursor.execute("UPDATE current_auction SET planet_name = ''")
+    db.commit()
 
     # Clear bids for the sold planet
-    rows = []
-    with open(os.path.join(app.config['DATA_FOLDER'], 'bids.csv'), 'r', newline='') as f:
-        reader = csv.reader(f)
-        header = next(reader)
-        rows.append(header)
-        for row in reader:
-            if row[0] != planet_name:
-                rows.append(row)
-    with open(os.path.join(app.config['DATA_FOLDER'], 'bids.csv'), 'w', newline='') as f:
-        writer = csv.writer(f)
-        writer.writerows(rows)
+    cursor = db.cursor()
+    cursor.execute("DELETE FROM bids WHERE planet = %s", (planet_name,))
+    db.commit()
 
-    with open(os.path.join(app.config['DATA_FOLDER'], 'last_update.txt'), 'w') as f:
-        f.write(str(time.time()))
+    cursor = db.cursor()
+    cursor.execute("UPDATE last_update SET time = %s", (time.time(),))
+    db.commit()
 
     return redirect(url_for('admin'))
 
 if __name__ == '__main__':
     app.run(debug=True)
-
