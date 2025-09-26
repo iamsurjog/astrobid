@@ -1,49 +1,48 @@
 import os
 from flask import Flask, render_template, request, redirect, url_for, session, make_response
 from werkzeug.utils import secure_filename
-import mysql.connector
-from dotenv import dotenv_values
+import sqlite3
 import time
-
-config = dotenv_values(".env")
-db = mysql.connector.connect(
-  host=config["host"],
-  user=config["user"],
-  password=config["password"],
-  database="sujatro$astrobid"
-)
 
 app = Flask(__name__)
 app.secret_key = 'super secret key'
 app.config['UPLOAD_FOLDER'] = 'static/uploads'
 
+def get_db_connection():
+    conn = sqlite3.connect('data/astrobid.db')
+    conn.row_factory = sqlite3.Row
+    return conn
+
 def get_users():
-    users = {}
-    cursor = db.cursor(dictionary=True)
+    conn = get_db_connection()
+    cursor = conn.cursor()
     cursor.execute("SELECT * FROM users")
-    for row in cursor.fetchall():
-        users[row['username']] = row['password']
+    users = {row['username']: row['password'] for row in cursor.fetchall()}
+    conn.close()
     return users
 
 def get_planets():
-    cursor = db.cursor(dictionary=True)
+    conn = get_db_connection()
+    cursor = conn.cursor()
     cursor.execute("SELECT * FROM planets")
-    return cursor.fetchall()
+    planets = cursor.fetchall()
+    conn.close()
+    return planets
 
 def get_ownership():
-    ownership = {}
-    cursor = db.cursor(dictionary=True)
+    conn = get_db_connection()
+    cursor = conn.cursor()
     cursor.execute("SELECT * FROM ownership")
-    for row in cursor.fetchall():
-        ownership[row['planet']] = row['team']
+    ownership = {row['planet']: row['team'] for row in cursor.fetchall()}
+    conn.close()
     return ownership
 
 def get_teams():
-    teams = {}
-    cursor = db.cursor(dictionary=True)
+    conn = get_db_connection()
+    cursor = conn.cursor()
     cursor.execute("SELECT * FROM teams")
-    for row in cursor.fetchall():
-        teams[row['team_name']] = int(row['credits'])
+    teams = {row['team_name']: int(row['credits']) for row in cursor.fetchall()}
+    conn.close()
     return teams
 
 @app.route('/')
@@ -83,9 +82,11 @@ def dashboard():
     teams = get_teams()
     session['credits'] = teams.get(session['username'], 0)
 
-    cursor = db.cursor()
+    conn = get_db_connection()
+    cursor = conn.cursor()
     cursor.execute("SELECT planet_name FROM current_auction LIMIT 1")
-    current_auction_planet_name = cursor.fetchone()[0]
+    row = cursor.fetchone()
+    current_auction_planet_name = row[0] if row else None
 
     current_planet = None
     if current_auction_planet_name:
@@ -97,14 +98,12 @@ def dashboard():
 
     highest_bid = {'team': 'N/A', 'amount': 0}
     if current_planet:
-        cursor = db.cursor(dictionary=True)
-        cursor.execute("SELECT * FROM bids WHERE planet = %s ORDER BY amount DESC LIMIT 1", (current_planet['name'],))
+        cursor.execute("SELECT * FROM bids WHERE planet = ? ORDER BY amount DESC LIMIT 1", (current_planet['name'],))
         highest_bid = cursor.fetchone() or highest_bid
     
     team_name = session['username']
     owned_planets_names = []
-    cursor = db.cursor(dictionary=True)
-    cursor.execute("SELECT planet FROM ownership WHERE team = %s", (team_name,))
+    cursor.execute("SELECT planet FROM ownership WHERE team = ?", (team_name,))
     for row in cursor.fetchall():
         owned_planets_names.append(row['planet'])
 
@@ -114,6 +113,7 @@ def dashboard():
         for planet in planets:
             if planet['name'] in owned_planets_names:
                 owned_planets.append(planet)
+    conn.close()
 
     resp = make_response(render_template('dashboard.html', current_planet=current_planet, highest_bid=highest_bid, credits=session.get('credits'), owned_planets=owned_planets))
     resp.headers['Cache-Control'] = 'no-cache, no-store, must-revalidate'
@@ -132,9 +132,11 @@ def admin():
     if 'username' not in session or session['username'] != 'root':
         return redirect(url_for('login'))
     
-    cursor = db.cursor()
+    conn = get_db_connection()
+    cursor = conn.cursor()
     cursor.execute("SELECT planet_name FROM current_auction LIMIT 1")
-    current_auction_planet_name = cursor.fetchone()[0]
+    row = cursor.fetchone()
+    current_auction_planet_name = row[0] if row else None
 
     current_planet = None
     if current_auction_planet_name:
@@ -146,12 +148,12 @@ def admin():
 
     highest_bid = {'team': 'N/A', 'amount': 0}
     if current_planet:
-        cursor = db.cursor(dictionary=True)
-        cursor.execute("SELECT * FROM bids WHERE planet = %s ORDER BY amount DESC LIMIT 1", (current_planet['name'],))
+        cursor.execute("SELECT * FROM bids WHERE planet = ? ORDER BY amount DESC LIMIT 1", (current_planet['name'],))
         highest_bid = cursor.fetchone() or highest_bid
     
     users = get_users()
     teams = [user for user in users if user != 'root']
+    conn.close()
 
     return render_template('admin.html', current_planet=current_planet, highest_bid=highest_bid, teams=teams)
 
@@ -159,6 +161,9 @@ def admin():
 def planet_management():
     if 'username' not in session or session['username'] != 'root':
         return redirect(url_for('login'))
+
+    conn = get_db_connection()
+    cursor = conn.cursor()
 
     if request.method == 'POST':
         name = request.form['name']
@@ -168,16 +173,16 @@ def planet_management():
         if image:
             filename = secure_filename(image.filename)
             image.save(os.path.join(app.config['UPLOAD_FOLDER'], filename))
-            cursor = db.cursor()
-            cursor.execute("INSERT INTO planets (name, description, image, value) VALUES (%s, %s, %s, %s)", (name, description, filename, value))
-            db.commit()
+            cursor.execute("INSERT INTO planets (name, description, image, value) VALUES (?, ?, ?, ?)", (name, description, filename, value))
+            conn.commit()
+            conn.close()
             return redirect(url_for('planet_management'))
 
     planets = get_planets()
     ownership = get_ownership()
-    cursor = db.cursor()
-    cursor.execute("UPDATE last_update SET time = %s", (time.time(),))
-    db.commit()
+    cursor.execute("UPDATE last_update SET time = ?", (time.time(),))
+    conn.commit()
+    conn.close()
     return render_template('planet_management.html', planets=planets, ownership=ownership)
 
 @app.route('/set_auction', methods=['POST'])
@@ -186,23 +191,31 @@ def set_auction():
         return redirect(url_for('login'))
 
     planet_name = request.form['planet_name']
-    cursor = db.cursor()
-    cursor.execute("UPDATE current_auction SET planet_name = %s", (planet_name,))
-    db.commit()
+    conn = get_db_connection()
+    cursor = conn.cursor()
+    cursor.execute("UPDATE current_auction SET planet_name = ?", (planet_name,))
+    if cursor.rowcount == 0:
+        cursor.execute("INSERT INTO current_auction (planet_name) VALUES (?)", (planet_name,))
+    conn.commit()
+    conn.close()
     return redirect(url_for('planet_management'))
 
 @app.route('/last_update')
 def last_update():
-    cursor = db.cursor()
+    conn = get_db_connection()
+    cursor = conn.cursor()
     cursor.execute("SELECT time FROM last_update")
-    return str(cursor.fetchone()[0])
+    time = str(cursor.fetchone()[0])
+    conn.close()
+    return time
 
 @app.route('/sell_planet', methods=['POST'])
 def sell_planet():
     if 'username' not in session or session['username'] != 'root':
         return redirect(url_for('login'))
 
-    cursor = db.cursor()
+    conn = get_db_connection()
+    cursor = conn.cursor()
     cursor.execute("SELECT planet_name FROM current_auction LIMIT 1")
     planet_name = cursor.fetchone()[0]
 
@@ -213,28 +226,24 @@ def sell_planet():
     amount = int(request.form['amount'])
 
     # Update ownership
-    cursor = db.cursor()
-    cursor.execute("INSERT INTO ownership (planet, team) VALUES (%s, %s)", (planet_name, team_name))
-    db.commit()
+    cursor.execute("INSERT INTO ownership (planet, team) VALUES (?, ?)", (planet_name, team_name))
+    conn.commit()
 
     # Update credits
-    cursor = db.cursor()
-    cursor.execute("UPDATE teams SET credits = credits - %s WHERE team_name = %s", (amount, team_name))
-    db.commit()
+    cursor.execute("UPDATE teams SET credits = credits - ? WHERE team_name = ?", (amount, team_name))
+    conn.commit()
 
     # Clear current auction
-    cursor = db.cursor()
     cursor.execute("UPDATE current_auction SET planet_name = ''")
-    db.commit()
+    conn.commit()
 
     # Clear bids for the sold planet
-    cursor = db.cursor()
-    cursor.execute("DELETE FROM bids WHERE planet = %s", (planet_name,))
-    db.commit()
+    cursor.execute("DELETE FROM bids WHERE planet = ?", (planet_name,))
+    conn.commit()
 
-    cursor = db.cursor()
-    cursor.execute("UPDATE last_update SET time = %s", (time.time(),))
-    db.commit()
+    cursor.execute("UPDATE last_update SET time = ?", (time.time(),))
+    conn.commit()
+    conn.close()
 
     return redirect(url_for('admin'))
 
@@ -243,29 +252,33 @@ def settings():
     if 'username' not in session:
         return redirect(url_for('login'))
 
+    conn = get_db_connection()
+    cursor = conn.cursor()
+
     if request.method == 'POST':
-        cursor = db.cursor()
         if 'new_username' in request.form:
             new_username = request.form['new_username']
             old_username = session['username']
             
             # Update username in users table
-            cursor.execute("UPDATE users SET username = %s WHERE username = %s", (new_username, old_username))
-            db.commit()
+            cursor.execute("UPDATE users SET username = ? WHERE username = ?", (new_username, old_username))
+            conn.commit()
             
             # Update username in teams table
-            cursor.execute("UPDATE teams SET team_name = %s WHERE team_name = %s", (new_username, old_username))
-            db.commit()
+            cursor.execute("UPDATE teams SET team_name = ? WHERE team_name = ?", (new_username, old_username))
+            conn.commit()
             
             session['username'] = new_username
         elif 'new_password' in request.form:
             new_password = request.form['new_password']
             username = session['username']
-            cursor.execute("UPDATE users SET password = %s WHERE username = %s", (new_password, username))
-            db.commit()
+            cursor.execute("UPDATE users SET password = ? WHERE username = ?", (new_password, username))
+            conn.commit()
         
+        conn.close()
         return redirect(url_for('settings'))
 
+    conn.close()
     return render_template('settings.html')
 
 @app.route('/leaderboard')
@@ -282,15 +295,18 @@ def leaderboard():
     leaderboard_data = []
     for team_name, credits in teams.items():
         planet_value = 0
+        num_planets = 0
         for planet, owner in ownership.items():
             if owner == team_name:
                 planet_value += planet_values.get(planet, 0)
+                num_planets += 1
         
         leaderboard_data.append({
             'team_name': team_name,
             'credits': credits,
             'planet_value': planet_value,
-            'total_score': credits + planet_value
+            'total_score': credits + planet_value,
+            'num_planets': num_planets
         })
 
     leaderboard_data.sort(key=lambda x: x['total_score'], reverse=True)
