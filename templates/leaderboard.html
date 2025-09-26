@@ -7,8 +7,294 @@
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Balsamiq+Sans:wght@400;700&display=swap" rel="stylesheet">
-    <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
 </head>
+    <style>
+    
+html, body {
+    height: 100%;
+    margin: 0;
+    padding: 0;
+    }
+    body {
+    font-family: 'Balsamiq Sans', sans-serif;
+    background-color: #182030;
+    color: #FFFFFF;
+    background-image: url('https://images.unsplash.com/photo-1534796636912-3b95b3ab5986?q=80&w=2071&auto=format&fit=crop&ixlib=rb-4.0.3&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D');
+    background-size: 100% 100%;
+    background-attachment: fixed;
+}
+
+main {
+    max-width: 960px; /* Or a suitable max-width for your design */
+    width: 100%;
+    margin: 0 auto; /* Center the main content */
+    padding: 1rem; /* Add some padding around the main content */
+}
+
+.header {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    padding: 1rem;
+    background-color: #00000000;
+    backdrop-filter: blur(10px);
+    border-bottom: 1px solid #8A2BE2;
+    margin-bottom: 1rem;
+}
+
+.header h1 {
+    margin: 0 0 1rem 0;
+    font-size: 1.5rem;
+    color: #8A2BE2;
+    text-align: center;
+}
+
+.logout-btn {
+    text-decoration: none;
+    color: #fff;
+    background-color: #8A2BE2;
+    padding: 0.5rem 1rem;
+    border-radius: 20px;
+    font-weight: bold;
+    transition: all 0.2s ease-in-out;
+    margin: 0.5rem 0;
+}
+
+.logout-btn:hover {
+    background-color: #0B3D91;
+    transform: scale(1.1);
+}
+
+.card {
+    background-color: rgba(42, 52, 75, 0.8);
+    backdrop-filter: blur(10px);
+    padding: 1rem;
+    border-radius: 15px;
+    border: 1px solid #0B3D91;
+    margin-bottom: 1rem;
+}
+
+h1, h2, h3 {
+    color: #8A2BE2;
+}
+
+a {
+    color: #0B3D91;
+    text-decoration: none;
+    transition: color 0.2s ease-in-out;
+}
+
+a:hover {
+    color: #8A2BE2;
+}
+
+form label {
+    display: block;
+    margin-bottom: 0.5rem;
+    font-weight: bold;
+}
+
+form input[type="text"],
+form input[type="password"],
+form input[type="number"],
+form input[type="file"],
+form textarea,
+form select {
+    width: 100%;
+    padding: 0.75rem;
+    margin-bottom: 1rem;
+    border: 1px solid #0B3D91;
+    border-radius: 8px;
+    background-color: #182030;
+    color: #FFFFFF;
+    box-sizing: border-box;
+}
+
+form input[type="submit"] {
+    background-color: #8A2BE2;
+    color: #fff;
+    padding: 0.75rem 1.5rem;
+    border: none;
+    border-radius: 20px;
+    cursor: pointer;
+    font-size: 1rem;
+    font-weight: bold;
+    transition: all 0.2s ease-in-out;
+}
+
+form input[type="submit"]:hover {
+    background-color: #0B3D91;
+    transform: scale(1.05);
+}
+
+img {
+    border-radius: 10px;
+    max-width: 100%;
+    height: auto;
+    margin-bottom: 1rem;
+}
+
+.container {
+    padding: 0;
+}
+
+.current-auction img {
+    max-width: 100%;
+    height: auto;
+    border-radius: 10px;
+    margin-bottom: 1rem;
+}
+
+.owned-planets h2 {
+    margin-top: 0;
+    color: #8A2BE2;
+}
+
+.planet-grid {
+    display: grid;
+    grid-template-columns: 1fr;
+    gap: 1rem;
+}
+
+.planet-card {
+    background-color: rgba(42, 52, 75, 0.8);
+    backdrop-filter: blur(10px);
+    border-radius: 15px;
+    border: 1px solid #0B3D91;
+    overflow: hidden;
+    transition: all 0.2s ease-in-out;
+}
+
+.planet-card:hover {
+    transform: translateY(-5px);
+    box-shadow: 0 0 15px #8A2BE2;
+}
+
+.planet-card img {
+    width: 100%;
+    height: 150px;
+    object-fit: cover;
+}
+
+.planet-card-content {
+    padding: 1rem;
+}
+
+.planet-card-content h3 {
+    margin-top: 0;
+}
+
+ul {
+    list-style-type: none;
+    padding: 0;
+}
+
+li {
+    margin-bottom: 0.5rem;
+}
+
+.table-container {
+    overflow-x: auto;
+}
+
+table {
+    width: 100%;
+    border-collapse: collapse;
+}
+
+th, td {
+    padding: 0.75rem;
+    text-align: left;
+    border-bottom: 1px solid #0B3D91;
+}
+
+th {
+    background-color: #0B3D91;
+}
+
+.login-container {
+    background-color: rgba(42, 52, 75, 0.8);
+    backdrop-filter: blur(10px);
+    padding: 1rem;
+    border-radius: 15px;
+    border: 1px solid #0B3D91;
+    box-shadow: 0 0 15px rgba(0,0,0,0.5);
+    width: 100%;
+    max-width: 400px;
+    text-align: center;
+    box-sizing: border-box;
+}
+
+.login-wrapper {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+}
+
+.error-message {
+    color: #8A2BE2;
+    margin-bottom: 1rem;
+}
+
+.logout-link {
+    color: #8A2BE2;
+    text-decoration: none;
+    margin-top: 1rem;
+    display: inline-block;
+}
+
+.logout-link:hover {
+    text-decoration: underline;
+}
+
+@media (min-width: 768px) {
+    body {
+        padding: 2rem;
+    }
+
+    .header {
+        flex-direction: row;
+        justify-content: space-between;
+        margin-bottom: 2rem;
+    }
+
+    .header h1 {
+        margin: 0;
+        text-align: left;
+    }
+
+    .logout-btn {
+        margin: 0 0 0 1rem;
+    }
+
+    .card {
+        padding: 1.5rem;
+        margin-bottom: 1.5rem;
+    }
+
+    .container {
+        padding: 1rem;
+    }
+
+    .planet-grid {
+        grid-template-columns: repeat(auto-fill, minmax(250px, 1fr));
+    }
+
+    form input[type="text"],
+    form input[type="password"],
+    form input[type="number"],
+    form input[type="file"],
+    form textarea,
+    form select {
+        width: 300px;
+    }
+
+    .login-container {
+        padding: 2rem;
+    }
+}
+    </style>
 <body>
     <div class="header">
         <h1>Leaderboard</h1>
