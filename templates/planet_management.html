@@ -2,6 +2,7 @@
 <html>
 <head>
     <title>Planet Management</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Balsamiq+Sans:wght@400;700&display=swap" rel="stylesheet">
@@ -37,33 +38,35 @@
 
     <div class="card">
         <h2>Existing Planets</h2>
-        <table>
-            <tr>
-                <th>Name</th>
-                <th>Description</th>
-                <th>Image</th>
-                <th>Value</th>
-                <th>Action</th>
-            </tr>
-            {% for planet in planets %}
-            <tr>
-                <td>{{ planet.name }}</td>
-                <td>{{ planet.description }}</td>
-                <td><img src="{{ url_for('static', filename='uploads/' + planet.image) }}" width="100"></td>
-                <td>{{ planet.value }}</td>
-                <td>
-                    {% if planet.name in ownership %}
-                        Sold to {{ ownership[planet.name] }}
-                    {% else %}
-                        <form method="post" action="{{ url_for('set_auction') }}">
-                            <input type="hidden" name="planet_name" value="{{ planet.name }}">
-                            <input type="submit" value="Set for Auction">
-                        </form>
-                    {% endif %}
-                </td>
-            </tr>
-            {% endfor %}
-        </table>
+        <div class="table-container">
+            <table>
+                <tr>
+                    <th>Name</th>
+                    <th>Description</th>
+                    <th>Image</th>
+                    <th>Value</th>
+                    <th>Action</th>
+                </tr>
+                {% for planet in planets %}
+                <tr>
+                    <td>{{ planet.name }}</td>
+                    <td>{{ planet.description }}</td>
+                    <td><img src="{{ url_for('static', filename='uploads/' + planet.image) }}" width="100"></td>
+                    <td>{{ planet.value }}</td>
+                    <td>
+                        {% if planet.name in ownership %}
+                            Sold to {{ ownership[planet.name] }}
+                        {% else %}
+                            <form method="post" action="{{ url_for('set_auction') }}">
+                                <input type="hidden" name="planet_name" value="{{ planet.name }}">
+                                <input type="submit" value="Set for Auction">
+                            </form>
+                        {% endif %}
+                    </td>
+                </tr>
+                {% endfor %}
+            </table>
+        </div>
     </div>
 </body>
 </html>

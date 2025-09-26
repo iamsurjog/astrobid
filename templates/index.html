@@ -3,34 +3,33 @@
 <head>
     <title>Welcome to Astrobid</title>
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Balsamiq+Sans:wght@400;700&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
 </head>
 <body>
-    <div class="header">
-        <h1>Astrobid</h1>
-        <a href="/login" class="login-btn">Login</a>
-    </div>
+    <main>
+        <div class="header">
+            <img src="{{ url_for('static', filename='images/logo.png') }}" alt="Astrobid Logo" style="max-height: 80px; width: auto; margin-bottom: 1rem;">
+            <a href="/login" class="logout-btn">Login</a>
+        </div>
 
-    <div class="card">
-        <h2>Welcome to the Ultimate Intergalactic Auction Experience!</h2>
-    </div>
+        <div class="card">
+            <h2>Welcome to the Ultimate Intergalactic Auction Experience!</h2>
+        </div>
 
-    <div class="card">
-        <h2>Rules of the Auction</h2>
-        <ul>
-            <li>Each team starts with 100,000 credits.</li>
-            <li>Planets are put up for auction one at a time.</li>
-            <li>The highest bidder at the end of the auction wins the planet.</li>
-            <li>Don't be evil.</li>
-        </ul>
-    </div>
+        <div class="card">
+            <h2>Rules of the Auction</h2>
+            <ul>
+                <li>Each team starts with 100,000 credits.</li>
+                <li>Planets are put up for auction one at a time.</li>
+                <li>The highest bidder at the end of the auction wins the planet.</li>
+                <li>Don't be evil.</li>
+            </ul>
+        </div>
 
-    <div class="card">
-        <h2>Gallery</h2>
-        <img src="/static/images/wallhaven-exjdgk_1920x1080.png" alt="A beautiful nebula">
-    </div>
+    </main>
 </body>
 </html>
