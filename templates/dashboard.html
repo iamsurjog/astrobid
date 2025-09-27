@@ -298,7 +298,7 @@ th {
 <body>
     <div class="header">
         <img src="{{ url_for('static', filename='images/logo.png') }}" alt="Astrobid Logo" style="height: 50px; margin-bottom: 1rem;">
-        <h1>{{ session.username }} <br> Credits: {{ credits }}</h1>
+        <h1>{{ session.username }} <br> BeeJays: {{ credits }}</h1>
         <div>
             <a href="{{ url_for('settings') }}" class="logout-btn">Settings</a>
             <a href="{{ url_for('logout') }}" class="logout-btn">Logout</a>
