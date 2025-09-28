@@ -317,7 +317,7 @@ th {
                 <label for="team_name">Winning Team:</label>
                 <select id="team_name" name="team_name">
                     {% for team in teams %}
-                        <option value="{{ team }}">{{ team }}</option>
+                    <option value="{{ team[0] }}">{{team[1]}}. {{ team[0] }}</option>
                     {% endfor %}
                 </select>
                 <label for="amount">Winning Bid:</label>

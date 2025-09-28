@@ -21,6 +21,14 @@ def get_users():
     conn.close()
     return users
 
+def get_users_sno():
+    conn = get_db_connection()
+    cursor = conn.cursor()
+    cursor.execute("SELECT * FROM users")
+    users = {row['username']: row['sno'] for row in cursor.fetchall()}
+    conn.close()
+    return users
+
 def get_planets():
     conn = get_db_connection()
     cursor = conn.cursor()
@@ -151,8 +159,8 @@ def admin():
         cursor.execute("SELECT * FROM bids WHERE planet = ? ORDER BY amount DESC LIMIT 1", (current_planet['name'],))
         highest_bid = cursor.fetchone() or highest_bid
     
-    users = get_users()
-    teams = [user for user in users if user != 'root']
+    users = get_users_sno()
+    teams = [(user, users[user]) for user in users if user != 'root']
     conn.close()
 
     return render_template('admin.html', current_planet=current_planet, highest_bid=highest_bid, teams=teams)
@@ -268,6 +276,9 @@ def settings():
             cursor.execute("UPDATE teams SET team_name = ? WHERE team_name = ?", (new_username, old_username))
             conn.commit()
             
+            cursor.execute("UPDATE ownership SET team = ? WHERE team = ?", (new_username, old_username))
+            conn.commit()
+
             session['username'] = new_username
         elif 'new_password' in request.form:
             new_password = request.form['new_password']
